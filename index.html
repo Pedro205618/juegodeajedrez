@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tablero de ajedrez</title>
+<style>
+body{margin:0;padding:16px;background:#f4efe6;box-sizing:border-box;font-family:Georgia,"Times New Roman",serif}
+#ajedrez{max-width:620px;margin:0 auto;padding:20px;border-radius:18px;background:#f8f1df;border:2px solid #9b7a4f;box-shadow:0 10px 28px rgba(60,40,20,.18);color:#3e2d1f}
+#ajedrez h2{margin:0 0 8px 0;text-align:center;color:#6f4f2c}
+#ajedrez .sub{text-align:center;margin:0 0 18px 0;color:#6b5a48;font-style:italic}
+#ajedrez{
+  box-sizing:border-box;
+  overflow:hidden;
+}
+#board{
+  width:100%;
+  max-width:560px;
+  aspect-ratio:1/1;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:repeat(8,1fr);
+  grid-template-rows:repeat(8,1fr);
+  border:3px solid #5b4229;
+  box-sizing:border-box;
+}
+.square{display:flex;align-items:center;justify-content:center;font-size:clamp(2rem,8vw,3.8rem);line-height:1;user-select:none;cursor:pointer}
+.light{background:#ead8b7}
+.dark{background:#8f623f}
+.square.selected{outline:4px solid #d8b13f;outline-offset:-4px}
+.square.last{box-shadow:inset 0 0 0 4px rgba(70,120,70,.55)}
+#status{margin:16px auto 0 auto;max-width:560px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.45);border:1px solid rgba(90,66,41,.25);text-align:center;font-weight:700}
+.actions{margin-top:14px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+button{border:1px solid #6f4f2c;background:linear-gradient(180deg,#a67b45,#7f5c34);color:#fff8e8;padding:9px 16px;border-radius:999px;font-family:Georgia,"Times New Roman",serif;font-weight:700;cursor:pointer}
+.square{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:"DejaVu Sans","Arial Unicode MS","Noto Sans Symbols",sans-serif;
+  font-size:clamp(1.7rem,8vw,3.4rem);
+  line-height:1;
+  user-select:none;
+  cursor:pointer;
+}
+.square.white-piece{
+  color:#f8f8f8;
+  text-shadow:
+    -1px -1px 0 #222,
+     1px -1px 0 #222,
+    -1px  1px 0 #222,
+     1px  1px 0 #222;
+}
+
+.square.black-piece{
+  color:#111;
+  text-shadow:
+    -1px -1px 0 #f4efe6,
+     1px -1px 0 #f4efe6,
+    -1px  1px 0 #f4efe6,
+     1px  1px 0 #f4efe6;
+}
+@media(max-width:520px){#ajedrez{padding:12px}.square{font-size:clamp(1.8rem,10vw,3rem)}}
+</style>
+</head>
+<body>
+<div id="ajedrez">
+  <h2>Tablero de ajedrez</h2>
+  <p class="sub">Primer prototipo: seleccionar una pieza y moverla.</p>
+  <div id="board"></div>
+  <div id="status">Turno de blancas.</div>
+  <div class="actions">
+    <button id="resetBtn" type="button">Nueva partida</button>
+  </div>
+</div>
+<script>
+(function(){
+  var boardEl=document.getElementById("board");
+  var statusEl=document.getElementById("status");
+  var selected=null;
+  var turn="white";
+  var lastMove=[];
+  var board=[];
+
+  var pieces={
+    wk:"♔",wq:"♕",wr:"♖",wb:"♗",wn:"♘",wp:"♙",
+    bk:"♚",bq:"♛",br:"♜",bb:"♝",bn:"♞",bp:"♟"
+  };
+
+  function initialBoard(){
+    return [
+      ["br","bn","bb","bq","bk","bb","bn","br"],
+      ["bp","bp","bp","bp","bp","bp","bp","bp"],
+      ["","","","","","","",""],
+      ["","","","","","","",""],
+      ["","","","","","","",""],
+      ["","","","","","","",""],
+      ["wp","wp","wp","wp","wp","wp","wp","wp"],
+      ["wr","wn","wb","wq","wk","wb","wn","wr"]
+    ];
+  }
+
+  function pieceColor(code){
+    if(!code)return null;
+    return code.charAt(0)==="w"?"white":"black";
+  }
+
+  function isSelected(r,c){
+    return selected && selected.r===r && selected.c===c;
+  }
+
+  function isLast(r,c){
+    for(var i=0;i<lastMove.length;i++){
+      if(lastMove[i].r===r && lastMove[i].c===c)return true;
+    }
+    return false;
+  }
+
+  function drawBoard(){
+    var html="",r,c,color,coord,code;
+    for(r=0;r<8;r++){
+      for(c=0;c<8;c++){
+        color=(r+c)%2===0?"light":"dark";
+        coord=String.fromCharCode(97+c)+(8-r);
+        code=board[r][c];
+        var pieceClass = "";
+if(code){
+  if(code.charAt(0) === "w"){
+    pieceClass = " white-piece";
+  } else {
+    pieceClass = " black-piece";
+  }
+}
+
+html += '<div class="square ' + color + pieceClass +
+          (isSelected(r,c)?" selected":"")+
+          (isLast(r,c)?" last":"")+
+          '" data-r="'+r+'" data-c="'+c+'" title="'+coord+'">'+
+          (pieces[code]||"")+
+          '</div>';
+      }
+    }
+    boardEl.innerHTML=html;
+  }
+
+  function setStatus(text){
+    statusEl.textContent=text;
+  }
+
+  function switchTurn(){
+    turn=turn==="white"?"black":"white";
+    setStatus(turn==="white"?"Turno de blancas.":"Turno de negras.");
+  }
+
+  function handleSquareClick(e){
+    var sq=e.target.closest(".square");
+    if(!sq)return;
+
+    var r=parseInt(sq.getAttribute("data-r"),10);
+    var c=parseInt(sq.getAttribute("data-c"),10);
+    var code=board[r][c];
+
+    if(selected){
+      var fromCode=board[selected.r][selected.c];
+
+      if(selected.r===r && selected.c===c){
+        selected=null;
+        drawBoard();
+        return;
+      }
+
+      if(code && pieceColor(code)===turn){
+        selected={r:r,c:c};
+        drawBoard();
+        return;
+      }
+
+      board[r][c]=fromCode;
+      board[selected.r][selected.c]="";
+      lastMove=[{r:selected.r,c:selected.c},{r:r,c:c}];
+      selected=null;
+      switchTurn();
+      drawBoard();
+      return;
+    }
+
+    if(!code){
+      setStatus("Selecciona una pieza.");
+      return;
+    }
+
+    if(pieceColor(code)!==turn){
+      setStatus(turn==="white"?"Es el turno de blancas.":"Es el turno de negras.");
+      return;
+    }
+
+    selected={r:r,c:c};
+    drawBoard();
+  }
+
+  function resetGame(){
+    board=initialBoard();
+    selected=null;
+    lastMove=[];
+    turn="white";
+    setStatus("Turno de blancas.");
+    drawBoard();
+  }
+
+  boardEl.addEventListener("click",handleSquareClick);
+  document.getElementById("resetBtn").onclick=resetGame;
+  resetGame();
+})();
+</script>
+</body>
+</html>
